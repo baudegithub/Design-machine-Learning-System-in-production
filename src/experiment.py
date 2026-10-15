@@ -1,84 +1,65 @@
 """
-Lightweight experiment runner converted from the notebook.
-Usage:
-    python -m src.experiment --base-dir ./E1
-
-This script loads the test dataset, loads the pretrained SavedModel inside the experiment folder,
-applies the provided TextVectorization and StringLookup assets, and evaluates the model.
-
-The style and messages are written in a personal, practical voice rather than a lesson.
+Utility helpers used by the experiment runner.
+This file resolves experiment folders in a flexible way so the project can run
+from the original notebook layout (E1/data, E1/model, E1/vocab) or directly from
+repo root if the files are stored there.
 """
 
-import argparse
 import os
-import sys
-
 import tensorflow as tf
 import pandas as pd
 
-# Prefer the lab_utils helper from the original repo if it's available
-try:
-    import lab_utils
-    HAS_LAB_UTILS = True
-except Exception:
-    HAS_LAB_UTILS = False
 
-from .utils import set_experiment_dirs, df_to_tfdata
+def set_experiment_dirs(base_dir: str):
+    """Return (data_dir, model_dir, vocab_dir).
 
+    Preferred layout:
+        <base_dir>/data
+        <base_dir>/model
+        <base_dir>/vocab
 
-def evaluate_baseline(base_dir: str):
-    data_dir, model_dir, vocab_dir = set_experiment_dirs(base_dir)
+    Fallback layout (matches this repo as checked in):
+        <base_dir>/train_data.csv
+        <base_dir>/test_data.csv
+        <base_dir>/saved_model.pb
+        <base_dir>/vocabulary.txt
+        <base_dir>/labels.txt
+    """
+    candidate_data_dir = os.path.join(base_dir, "data")
+    candidate_model_dir = os.path.join(base_dir, "model")
+    candidate_vocab_dir = os.path.join(base_dir, "vocab")
 
-    print(f"Using experiment base directory: {base_dir}")
-    print(f"  data:  {data_dir}")
-    print(f"  model: {model_dir}")
-    print(f"  vocab: {vocab_dir}\n")
+    if os.path.isdir(candidate_data_dir) and os.path.isdir(candidate_model_dir) and os.path.isdir(candidate_vocab_dir):
+        return candidate_data_dir, candidate_model_dir, candidate_vocab_dir
 
-    # Load data
-    train_df = pd.read_csv(os.path.join(data_dir, "train_data.csv"))
-    test_df = pd.read_csv(os.path.join(data_dir, "test_data.csv"))
-
-    # Load the saved model
-    print("Loading SavedModel from disk...")
-    model = tf.keras.models.load_model(model_dir)
-    model.summary()
-
-    # Create label lookup
-    topic_lookup = tf.keras.layers.StringLookup(vocabulary=f'{vocab_dir}/labels.txt', num_oov_indices=0)
-
-    # Load the title preprocessor used by the prototype (vocabulary assets)
-    MAX_LENGTH = 20
-    VOCAB_SIZE = 10000
-    title_preprocessor = tf.keras.layers.TextVectorization(max_tokens=VOCAB_SIZE, output_sequence_length=MAX_LENGTH)
-    title_preprocessor.load_assets(vocab_dir)
-
-    # Convert test dataframe to tf.data.Dataset
-    print("Converting test dataframe to tf.data.Dataset...")
-    test_ds = df_to_tfdata(test_df, topic_lookup, title_preprocessor)
-
-    print("Evaluating model on test set...")
-    results = model.evaluate(test_ds, verbose=1)
-
-    print("\nEvaluation results:")
-    if isinstance(results, list):
-        print(results)
+    # Fallback: use repo root for the actual notebook asset layout
+    if os.path.exists(os.path.join(base_dir, "train_data.csv")) and os.path.exists(os.path.join(base_dir, "test_data.csv")):
+        data_dir = base_dir
     else:
-        print([results])
+        data_dir = candidate_data_dir
 
-    return results
+    if os.path.exists(os.path.join(base_dir, "saved_model.pb")) or os.path.exists(os.path.join(base_dir, "saved_model")):
+        model_dir = base_dir
+    else:
+        model_dir = candidate_model_dir
 
+    if os.path.exists(os.path.join(base_dir, "vocabulary.txt")) and os.path.exists(os.path.join(base_dir, "labels.txt")):
+        vocab_dir = base_dir
+    else:
+        vocab_dir = candidate_vocab_dir
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description="Run the baseline evaluation for the news title classifier")
-    parser.add_argument("--base-dir", default="./E1", help="Path to the experiment folder (default: ./E1)")
-    args = parser.parse_args(argv)
-
-    if not os.path.isdir(args.base_dir):
-        print(f"ERROR: base dir {args.base_dir} does not exist. Make sure you have the E1/ folder from the prototype.")
-        sys.exit(1)
-
-    evaluate_baseline(args.base_dir)
+    return data_dir, model_dir, vocab_dir
 
 
-if __name__ == "__main__":
-    main()
+def df_to_tfdata(df: pd.DataFrame, topic_lookup: tf.keras.layers.StringLookup, title_preprocessor: tf.keras.layers.TextVectorization, batch_size: int = 128):
+    """Convert a pandas dataframe with columns ['title', 'topic'] to a batched tf.data.Dataset."""
+    titles = df['title'].astype(str).tolist()
+    topics = df['topic'].astype(str).tolist()
+
+    topic_indices = topic_lookup(tf.constant(topics)).numpy()
+    title_tensors = title_preprocessor(tf.constant(titles))
+
+    ds = tf.data.Dataset.from_tensor_slices((title_tensors, topic_indices))
+    ds = ds.batch(batch_size)
+    ds = ds.prefetch(tf.data.AUTOTUNE)
+    return ds

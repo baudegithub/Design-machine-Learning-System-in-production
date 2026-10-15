@@ -1,37 +1,74 @@
-# News Title Classifier — Personal Project
+"""
+Lightweight experiment runner converted from the notebook.
 
-This repository contains a compact, runnable ML project converted from an interactive notebook into a small project structure so you can run quick experiments locally.
+This version is compatible with both of these layouts:
+- E1/data, E1/model, E1/vocab
+- repo root files: train_data.csv, test_data.csv, saved_model.pb, vocabulary.txt, labels.txt
 
-Goal
-- Reproduce a baseline evaluation of a pretrained title-based news topic classifier (SavedModel) that was included in the original prototype (E1/model).
-- Make it easy to iterate: load data, preprocess with the provided vocabulary, evaluate model metrics locally.
+Usage:
+    python -m src.experiment --base-dir .
+    python -m src.experiment --base-dir ./E1
+"""
 
-Why I made this
-- I wanted a small, portable project I can run and extend quickly on my laptop. It's focused and practical — not a tutorial.
+import argparse
+import os
+import sys
 
-Quick start
-1. Create a Python virtual environment and install dependencies:
+import pandas as pd
+import tensorflow as tf
 
-   python -m venv .venv
-   source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-   pip install -r requirements.txt
+from .utils import set_experiment_dirs, df_to_tfdata
 
-2. Run the baseline evaluation (assumes E1/ is present at repo root):
 
-   python -m src.experiment --base-dir ./E1
+def evaluate_baseline(base_dir: str):
+    data_dir, model_dir, vocab_dir = set_experiment_dirs(base_dir)
 
-What the script does
-- Loads data from <base-dir>/data (train_data.csv, test_data.csv)
-- Loads vocabulary and labels from <base-dir>/vocab
-- Loads the SavedModel from <base-dir>/model
-- Prepares tf.data.Dataset using the project's preprocessing and evaluates the model on the test set
+    print(f"Using experiment base directory: {base_dir}")
+    print(f"  data:  {data_dir}")
+    print(f"  model: {model_dir}")
+    print(f"  vocab: {vocab_dir}\n")
 
-Files added
-- src/experiment.py — main script to run experiments
-- src/utils.py — small helpers to load dirs and datasets
-- requirements.txt — minimal dependencies
-- README.md — this file
+    train_df = pd.read_csv(os.path.join(data_dir, "train_data.csv")) if os.path.exists(os.path.join(data_dir, "train_data.csv")) else None
+    test_df = pd.read_csv(os.path.join(data_dir, "test_data.csv")) if os.path.exists(os.path.join(data_dir, "test_data.csv")) else None
 
-Notes
-- The project re-uses the helper module lab_utils from the original materials (the notebook imports it). If lab_utils is missing, see src/utils.py for alternative helpers.
-- If you want me to add training, ablations, or a lightweight CLI for hyperparameter sweeps, tell me which experiments you'd like to run and I'll add them.
+    if test_df is None:
+        raise FileNotFoundError(f"Could not find test_data.csv under {data_dir}. Expected a data folder or root-level CSV file.")
+
+    # If root-level data is used, try to load the model from the same directory
+    model_path = model_dir
+    print("Loading SavedModel from disk...")
+    model = tf.keras.models.load_model(model_path)
+    model.summary()
+
+    topic_lookup = tf.keras.layers.StringLookup(vocabulary=os.path.join(vocab_dir, "labels.txt"), num_oov_indices=0)
+
+    MAX_LENGTH = 20
+    VOCAB_SIZE = 10000
+    title_preprocessor = tf.keras.layers.TextVectorization(max_tokens=VOCAB_SIZE, output_sequence_length=MAX_LENGTH)
+    title_preprocessor.load_assets(vocab_dir)
+
+    print("Converting test dataframe to tf.data.Dataset...")
+    test_ds = df_to_tfdata(test_df, topic_lookup, title_preprocessor)
+
+    print("Evaluating model on test set...")
+    results = model.evaluate(test_ds, verbose=1)
+
+    print("\nEvaluation results:")
+    print(results)
+    return results
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Run the baseline evaluation for the news title classifier")
+    parser.add_argument("--base-dir", default=".", help="Experiment directory. Use '.' for repo root or './E1' for the notebook-style layout.")
+    args = parser.parse_args(argv)
+
+    if not os.path.isdir(args.base_dir):
+        print(f"ERROR: base dir {args.base_dir} does not exist.")
+        sys.exit(1)
+
+    evaluate_baseline(args.base_dir)
+
+
+if __name__ == "__main__":
+    main()
