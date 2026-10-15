@@ -1,0 +1,8 @@
+# Ignore environment and model artifacts
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+models/
+*.h5
+.env

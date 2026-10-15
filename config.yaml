@@ -1,0 +1,6 @@
+run:
+  base_dir: '.'
+  epochs: 5
+  batch_size: 128
+  max_length: 20
+  vocab_size: 10000
