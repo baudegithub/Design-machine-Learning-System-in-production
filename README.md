@@ -1,14 +1,14 @@
 # MyNewsClassifier
 
-A small personal project for classifying news article titles into topic categories using the TensorFlow/Keras model from the ML lifecycle case study.
+A personal project for classifying news article titles into topic categories using a TensorFlow/Keras model.
 
-## What this project does
+## Overview
 
-- Loads the news dataset and inspects the labels and feature quality.
-- Reuses the notebook workflow for data exploration and baseline evaluation.
-- Provides scripts for each stage of the project lifecycle.
-- Includes a simple Flask app for local prediction testing.
-- Packages the project for local Docker-based execution.
+This project converts the notebook workflow into a reusable codebase for:
+- data inspection and class distribution analysis
+- baseline evaluation of the saved model
+- a local prediction API for article titles
+- Docker-based local hosting
 
 ## Project structure
 
@@ -25,6 +25,7 @@ A small personal project for classifying news article titles into topic categori
 ├── requirements.txt
 ├── Dockerfile
 ├── .dockerignore
+├── FinalProject.ipynb
 ├── train_data.csv
 ├── test_data.csv
 ├── labels.txt
@@ -33,12 +34,10 @@ A small personal project for classifying news article titles into topic categori
 ├── keras_metadata.pb
 ├── variables.data-00000-of-00001
 ├── variables.index
-└── FinalProject.ipynb
+└── lab_utils (1).py
 ```
 
 ## Setup
-
-Create a virtual environment and install dependencies:
 
 ```bash
 python -m venv .venv
@@ -46,56 +45,38 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Run the data and modeling stages
-
-From the repo root:
+## Run the full project pipeline
 
 ```bash
 python -m mynews_classifier.run_all --base-dir .
 ```
 
-This runs the same core logic as the notebook:
-- data inspection and class proportions
-- model loading
-- preprocessing setup
-- evaluation on the test set
+This runs:
+1. data inspection
+2. label distribution checks
+3. model loading and evaluation on the test set
 
-## Run the local prediction app
+## Run the local prediction API
 
 ```bash
-python -m mynews_classifier.app
+python -m mynews_classifier.app --base-dir . --host 0.0.0.0 --port 5000
 ```
 
-Then send a POST request:
+Then test it:
 
 ```bash
 curl -X POST http://localhost:5000/predict \
   -H "Content-Type: application/json" \
-  -d '{"title": "Apple launches new AI chip for laptops"}'
+  -d '{"title":"Apple launches new AI chip for laptops"}'
 ```
 
-## Run with Docker
+## Docker
 
 ```bash
 docker build -t mynews-classifier .
 docker run -p 5000:5000 mynews-classifier
 ```
 
-The app will be available at:
-
-```text
-http://localhost:5000/health
-http://localhost:5000/predict
-```
-
 ## Notes
 
-- This project was converted from the notebook workflow into scripts for a personal, reusable setup.
-- The code keeps the same logic as the original case study while removing the classroom narrative.
-- The app is intended for local development and experimentation, not for production deployment.
-
-## Source material
-
-This project is based on the workflow in the notebook:
-- FinalProject.ipynb
-- lab_utils (helper logic reused and adapted)
+This project reuses the notebook logic as a personal project structure and keeps the deployment API local for quick experimentation.
