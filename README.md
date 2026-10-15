@@ -1,60 +1,101 @@
-# News Article Topic Classifier — ML Project Lifecycle Case Study
+# MyNewsClassifier
 
-## Problem
+A small personal project for classifying news article titles into topic categories using the TensorFlow/Keras model from the ML lifecycle case study.
 
-A news aggregation start-up needed to automatically classify incoming articles into topics, using only the article **title** as input. Their previous developer had shipped a lightweight TensorFlow prototype, but it was underperforming in production and the original evaluation metrics had been lost. This project walks through the full **ML Project Lifecycle** — Scoping → Data → Modeling → Deployment — to troubleshoot the prototype and ship an improved beta.
+## What this project does
 
-Manual sorting couldn't keep up with the volume of incoming articles, and simple rule-based classification wasn't accurate enough — making this a good fit for a supervised ML approach.
+- Loads the news dataset and inspects the labels and feature quality.
+- Reuses the notebook workflow for data exploration and baseline evaluation.
+- Provides scripts for each stage of the project lifecycle.
+- Includes a simple Flask app for local prediction testing.
+- Packages the project for local Docker-based execution.
 
-## Approach
+## Project structure
 
-**Data.** Titles are labeled into 8 topics (`ENTERTAINMENT`, `HEALTH`, `TECHNOLOGY`, `WORLD`, `BUSINESS`, `SPORTS`, `NATION`, `SCIENCE`), sourced from a revised version of the [Topic Labeled News Dataset](https://www.kaggle.com/datasets/kotartemiy/topic-labeled-news-dataset). Since no baseline metrics existed, the first step was re-evaluating the existing prototype on held-out test data to establish one.
-
-**Data-centric iteration.** Rather than jumping straight to model tuning, the project follows a data-centric AI approach — holding the model fixed and improving data quality first:
-- Rebuilt the train/dev/test split to fix a severe class imbalance (`SCIENCE` made up under 1% of the original data).
-- Ran error analysis per topic to find where the model was failing, which surfaced a labeling bug: every `BUSINESS`-labeled row in one split shared the exact same title, meaning the model had only memorized one pattern instead of learning the category.
-- Investigated label ambiguity (e.g., titles that plausibly belong to both `HEALTH` and `NATION`) using top-2 accuracy as a diagnostic, which showed the model's second-best guess was often correct — a sign of genuine class overlap rather than model failure.
-- Monitored for out-of-vocabulary token spikes on new data, which surfaced non-English article titles slipping into the pipeline undetected.
-
-**Model.** A TensorFlow/Keras model: a `TextVectorization` layer (10,000-word vocabulary, max sequence length 20) feeding an `Embedding` → `Dense` → `Flatten` → softmax classification head over the 8 topics.
-
-**Deployment.** Served with **TensorFlow Serving**, including:
-- Blue-green and canary deployment patterns for safely rolling out new model versions.
-- A confidence-threshold pattern for partial automation: predictions above 60% confidence are auto-routed, everything else is flagged for manual review rather than forced into a possibly-wrong category.
-- Production monitoring for out-of-vocabulary rate as an early-warning signal for data/model drift.
-
-## Results
-
-| Stage | Sparse categorical accuracy |
-|---|---|
-| Baseline (original prototype, as re-evaluated) | 77.8% |
-| After rebuilding a balanced train/dev/test split | 80.8% |
-
-Error analysis also surfaced a data quality bug (duplicated `BUSINESS` titles) that was silently inflating that category's apparent accuracy to 100% — a reminder that a suspiciously perfect score is itself worth investigating.
-
-## Tech stack
-
-`TensorFlow` / `Keras` · `pandas` · `scikit-learn` · `SQLite` · `TensorFlow Serving`
-
-## Repo structure
-
-```
-project-name/
+```text
+.
+├── mynews_classifier/
+│   ├── __init__.py
+│   ├── app.py
+│   ├── data_stage.py
+│   ├── modeling_stage.py
+│   ├── run_all.py
+│   └── utils.py
 ├── README.md
-├── E1/                  # Original prototype: data, model, vocab
-├── E2/                  # Retrained model after data-centric fixes
-├── E3/                  # Vocabulary rebuilt after the BUSINESS label fix
-├── assets/              # Diagrams (ML lifecycle, deployment architecture)
-└── lab_utils.py         # Shared helpers: data loading, tf.data conversion, metrics
+├── requirements.txt
+├── Dockerfile
+├── .dockerignore
+├── train_data.csv
+├── test_data.csv
+├── labels.txt
+├── vocabulary.txt
+├── saved_model.pb
+├── keras_metadata.pb
+├── variables.data-00000-of-00001
+├── variables.index
+└── FinalProject.ipynb
 ```
 
-## What I'd improve next
+## Setup
 
-- Complete the remaining error-analysis exercises (label-ambiguity resolution, additional data augmentation for `SCIENCE`) to push accuracy further.
-- Add automated data-quality checks (e.g., duplicate-title detection) to the pipeline so issues like the `BUSINESS` mislabeling are caught before training rather than during error analysis.
-- Track HLP (human-level performance) more rigorously to know how much further model improvement is realistically possible given label ambiguity.
+Create a virtual environment and install dependencies:
 
-## Acknowledgement
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-Case study and starter code from DeepLearning.AI's *Machine Learning Engineering for Production (MLOps)* specialization. Dataset adapted from the [Topic Labeled News Dataset](https://www.kaggle.com/datasets/kotartemiy/topic-labeled-news-dataset) on Kaggle.
+## Run the data and modeling stages
 
+From the repo root:
+
+```bash
+python -m mynews_classifier.run_all --base-dir .
+```
+
+This runs the same core logic as the notebook:
+- data inspection and class proportions
+- model loading
+- preprocessing setup
+- evaluation on the test set
+
+## Run the local prediction app
+
+```bash
+python -m mynews_classifier.app
+```
+
+Then send a POST request:
+
+```bash
+curl -X POST http://localhost:5000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Apple launches new AI chip for laptops"}'
+```
+
+## Run with Docker
+
+```bash
+docker build -t mynews-classifier .
+docker run -p 5000:5000 mynews-classifier
+```
+
+The app will be available at:
+
+```text
+http://localhost:5000/health
+http://localhost:5000/predict
+```
+
+## Notes
+
+- This project was converted from the notebook workflow into scripts for a personal, reusable setup.
+- The code keeps the same logic as the original case study while removing the classroom narrative.
+- The app is intended for local development and experimentation, not for production deployment.
+
+## Source material
+
+This project is based on the workflow in the notebook:
+- FinalProject.ipynb
+- lab_utils (helper logic reused and adapted)
