@@ -1,0 +1,1 @@
+"""MyNewsClassifier package."""
