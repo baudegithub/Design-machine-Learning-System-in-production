@@ -1,26 +1,31 @@
 # News Article Classifier for Production-Ready ML
 
-## Project overview
+## Executive summary
 
-This project focuses on a practical machine learning problem: helping a company automatically classify incoming news articles so they can route content, prioritize coverage, and scale operations without relying on manual review.
+This project builds a machine learning pipeline to automatically classify news article titles into predefined categories such as technology, business, health, sports, and world news. The goal is to reduce manual review and help teams process large volumes of incoming content more efficiently.
 
-The business need is straightforward: as the number of news sources grows, manual categorization becomes slow, inconsistent, and expensive. A rule-based system is brittle and often fails to capture the semantic meaning of article titles. A trained text classifier can help automate this process and improve operational efficiency.
+The repository combines a notebook-based exploratory workflow with a production-style inference API. It demonstrates a realistic end-to-end ML workflow: data preparation, text preprocessing, model training, evaluation, model artifact storage, and deployment of a simple prediction service.
 
-## Problem statement
+## Problem
 
-The company receives a large volume of article titles from multiple sources every day. These titles must be grouped into meaningful categories such as technology, business, sports, health, science, and world news.
+The company receives a large number of news articles from multiple sources. Manually sorting each article into categories is slow, inconsistent, and difficult to scale as the volume of incoming content grows.
 
-The challenge is to build a model that:
-- reads a news title,
-- understands the content and context,
-- predicts the correct topic category,
-- can be deployed as a simple API for production-like use.
+A traditional rule-based approach is limited because article titles can be ambiguous and semantically rich. A machine learning model can learn patterns from labeled examples and classify new titles more effectively and at scale.
 
-## Dataset
+## Business impact
 
-The project uses a labeled dataset of news article titles and their associated topics.
+Automating this classification task supports:
+- faster routing of headlines into the correct category,
+- better content organization,
+- reduced manual effort,
+- scalability as the number of sources increases,
+- support for operational workflows and downstream content systems.
 
-Example labels in the repository include:
+## Data
+
+The project uses a labeled dataset of article titles mapped to topical categories.
+
+Example labels include:
 - ENTERTAINMENT
 - HEALTH
 - TECHNOLOGY
@@ -30,140 +35,120 @@ Example labels in the repository include:
 - NATION
 - SCIENCE
 
-The core training dataset is stored in:
+The main training and evaluation files are:
 - train_data.csv
 - test_data.csv
+- labels.txt
+- vocabulary.txt
 
-The model reads the title field and predicts the corresponding topic label.
+These assets support the model’s ability to classify article titles based on patterns in the text.
 
 ## Approach
 
-This is a classic text classification workflow using machine learning and TensorFlow:
+This project follows a typical machine learning pipeline for text classification.
 
-1. Data preparation
-   - Load article titles and topic labels
-   - Clean the text input
-   - Convert labels to integer indices for training
+### 1. Data preparation
+- load article title and topic label pairs,
+- convert labels into model-readable indices,
+- prepare train/test splits.
 
-2. Text preprocessing
-   - Use TensorFlow TextVectorization to turn titles into sequence tokens
-   - Standardize vocabulary and max sequence length
+### 2. Text preprocessing
+- use TensorFlow TextVectorization,
+- convert raw titles into token sequences,
+- build a vocabulary for the model input.
 
-3. Model building
-   - Train a simple neural network for multi-class classification
-   - Use an embedding layer + dense layers + softmax output
+### 3. Model training
+- train a compact neural network for multi-class classification,
+- use an embedding layer and dense layers to learn text patterns,
+- apply a softmax output for multi-label topic prediction.
 
-4. Evaluation
-   - Measure classification accuracy on a held-out test set
-   - Log experiment metrics to experiment-tracker.csv
+### 4. Model evaluation
+- assess model quality on a held-out test set,
+- track metrics in experiment-tracker.csv.
 
-5. Serving
-   - Expose the trained model through a FastAPI API
-   - Accept a title as input and return the top predicted categories with probabilities
+### 5. Deployment
+- save the trained model artifact,
+- serve predictions with a FastAPI application,
+- expose an HTTP endpoint for classification requests.
 
-## Model and results
+## Key result
 
-The project implements a lightweight deep learning text classifier built with TensorFlow.
+The repository includes an evaluation artifact showing a categorical accuracy of approximately 77.8% on the evaluation split. While this is a lightweight prototype, it demonstrates that the model can learn meaningful news-topic patterns from title text and provides a credible baseline for further improvement.
 
-The checklist of the model pipeline includes:
-- title preprocessing
-- label encoding
-- model training
-- validation/evaluation
-- saved model export
-- API-based inference
-
-The repository includes a prototype evaluation result showing approximately 77.8% categorical accuracy on the evaluation split. This demonstrates that the model can learn meaningful topic patterns from article titles, even with a simple architecture and a small dataset.
-
-This is a strong starting point for a production system and can be extended with:
-- better text cleaning,
-- model tuning,
-- larger datasets,
-- transformer-based architectures,
-- logging and monitoring,
-- retraining pipelines.
-
-## Production-style architecture
-
-The project follows a typical ML workflow:
-
-- Data collection and labeling
-- Experimentation and model training
-- Model evaluation
-- Artifact saving
-- Inference service deployment
-
-## Repository structure
+## Typical ML project structure
 
 ```text
 Design-machine-Learning-System-in-production/
-├── README.md                          # Project overview and run instructions
-├── Dockerfile                         # Container setup for the inference API
-├── requirements.txt                   # Python dependencies
-├── config.yaml                       # Training configuration
-├── train_data.csv                    # Training data
-├── test_data.csv                     # Test data
-├── labels.txt                        # Label vocabulary
-├── vocabulary.txt                    # Token vocabulary
-├── saved_model.pb                    # Saved TensorFlow model artifact
-├── variables.index                   # TensorFlow model metadata
-├── variables.data-00000-of-00001     # TensorFlow model weights
-├── news_articles.db                  # SQLite database artifact
-├── experiment-tracker.csv            # Evaluation metrics log
-├── FinalProject.ipynb                # Notebook-based exploratory work
-├── FinalProject (1).ipynb            # Notebook iteration
-├── FinalProject (2).ipynb            # Notebook iteration
+├── README.md
+├── Dockerfile
+├── requirements.txt
+├── config.yaml
+├── train_data.csv
+├── test_data.csv
+├── labels.txt
+├── vocabulary.txt
+├── saved_model.pb
+├── variables.index
+├── variables.data-00000-of-00001
+├── news_articles.db
+├── experiment-tracker.csv
+├── FinalProject.ipynb
+├── FinalProject (1).ipynb
+├── FinalProject (2).ipynb
 ├── src/
 │   ├── __init__.py
-│   ├── app.py                        # FastAPI prediction service
-│   ├── train.py                      # Training script
-│   ├── predict.py                    # Single-title prediction script
-│   ├── evaluate.py                   # Evaluation script
-│   ├── experiment.py                 # Helper utilities
-│   └── utils.py                      # Shared preprocessing helpers
-├── pipeline_diagram.png               # Architecture/flow diagram
-├── ml_lifecycle.png                   # ML lifecycle visualization
-├── ml_lifecycle_modeling.png          # Modeling workflow diagram
-└── network.png                       # Network illustration
+│   ├── app.py
+│   ├── train.py
+│   ├── predict.py
+│   ├── evaluate.py
+│   ├── experiment.py
+│   └── utils.py
+├── pipeline_diagram.png
+├── ml_lifecycle.png
+├── ml_lifecycle_modeling.png
+├── network.png
+└── other model artifacts
 ```
 
-## Typical ML lifecycle implemented
+This structure reflects a common ML lifecycle:
+- data and labels,
+- exploratory notebook work,
+- reusable training and evaluation scripts,
+- saved model artifacts,
+- deployment interface for inference.
 
-This project is aligned with a standard ML project flow:
+## Repository components
 
-1. Problem definition
-2. Data acquisition
-3. Data exploration
-4. Feature engineering / text preprocessing
-5. Model training
-6. Validation and testing
-7. Model saving
-8. Deployment for real-world use
+- FinalProject.ipynb: notebook-based experimentation and model exploration
+- src/train.py: training pipeline for the classifier
+- src/evaluate.py: evaluation script for test-set validation
+- src/predict.py: command-line inference for individual titles
+- src/app.py: FastAPI API for serving predictions
+- src/utils.py and src/experiment.py: shared utility and environment handling
+- Dockerfile: containerized deployment support
 
-## Run locally
+## Running the project locally
 
-### 1) Create a virtual environment
+### 1. Create a virtual environment
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 ```
 
-### 2) Install dependencies
+### 2. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3) Start the API
+### 3. Start the API
 
 ```bash
 uvicorn src.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 4) Test the endpoint
-
-Open the app in a browser or send a POST request:
+### 4. Test the prediction endpoint
 
 ```bash
 curl -X POST "http://localhost:8000/predict" \
@@ -178,22 +163,31 @@ docker build -t news-title-classifier .
 docker run -p 8000:8000 --rm -e BASE_DIR=. news-title-classifier
 ```
 
-## Why this project matters
+## Skills demonstrated
 
-This repository demonstrates a complete applied ML workflow in a compact form:
-- real business problem,
-- structured data,
-- text-based model training,
-- evaluation and iteration,
-- deployment as a machine learning service.
+This project showcases practical understanding of:
+- machine learning problem framing,
+- text classification,
+- data preparation and labeling,
+- TensorFlow model training,
+- model evaluation and experimentation,
+- model packaging and deployment,
+- API-based inference serving.
 
-It is a good example of an entry-level but realistic ML product project that bridges experimentation and production thinking.
+## Why this project is valuable
+
+This repository is a good example of an applied ML project that moves beyond notebook-only experimentation. It combines real-world problem solving, end-to-end pipeline thinking, and deployment awareness. It demonstrates how a simple but effective ML model can support business operations in a real use case.
+
+## Future improvements
+
+This project could be extended with:
+- stronger text cleaning and normalization,
+- hyperparameter tuning,
+- larger and more diverse benchmark datasets,
+- transformer-based models such as BERT,
+- MLOps tooling for retraining and model monitoring,
+- a production deployment pipeline with CI/CD and monitoring.
 
 ## Summary
 
-This project shows how a business problem can be solved with machine learning by turning a manual text-categorization task into an automated classification system. The project covers the full journey from data and modeling to deployment, making it a strong example of applied AI in a real-world setting.
-
-## License
-
-The repository does not currently declare a specific license in the README. Please check repository settings or the codebase if a public license is required for reuse.
-
+This repo presents a practical machine learning solution for automatically classifying news article titles into topic categories. It combines experimentation, model training, evaluation, and a production-style API layer into a compact and understandable project. The work demonstrates a realistic ML workflow that is relevant to both business use cases and applied AI portfolios.
